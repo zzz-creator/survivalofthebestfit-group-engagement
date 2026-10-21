@@ -37,5 +37,11 @@
   },
   "browserslist": [
     "last 2 versions"
-   ]
+  ],
+  "allowScripts": {
+    "gifsicle@4.0.1": true,
+    "optipng-bin@5.1.0": true,
+    "optipng-bin@6.0.0": true,
+    "jpegtran-bin@4.0.0": true
+  }
 }
