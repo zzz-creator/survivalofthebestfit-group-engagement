@@ -69,11 +69,9 @@ function modules() {
     .pipe(gulp.dest('../dist/vendor/bootstrap/css/'));
   var bootstrapJs = gulp.src('./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js')
     .pipe(gulp.dest('../dist/vendor/bootstrap/js/'));
-  // Font Awesome
-  var fontAwesome = gulp.src('./node_modules/@fortawesome/fontawesome-free/css/all.min.css')
-    .pipe(gulp.dest('../dist/vendor/fontawesome-free/css/'));
-  var fontAwesomeFont = gulp.src('./node_modules/@fortawesome/fontawesome-free/webfonts/*')
-    .pipe(gulp.dest('../dist/vendor/fontawesome-free/webfonts/'));
+  // Font Awesome is loaded from the jsDelivr CDN by the layout, so it is not
+  // copied into dist/vendor: .gitignore excludes fontawesome-free, which meant
+  // every deploy silently dropped it from the published site.
   // jQuery Easing
   var jqueryEasing = gulp.src('./node_modules/jquery.easing/jquery.easing.min.js')
     .pipe(gulp.dest('../dist/vendor/jquery-easing/'));
@@ -83,7 +81,7 @@ function modules() {
       '!./node_modules/jquery/dist/core.js'
     ])
     .pipe(gulp.dest('../dist/vendor/jquery'));
-  return merge(bootstrap, bootstrapJs, fontAwesome, fontAwesomeFont, jquery, jqueryEasing);
+  return merge(bootstrap, bootstrapJs, jquery, jqueryEasing);
 }
 
 // CSS task
