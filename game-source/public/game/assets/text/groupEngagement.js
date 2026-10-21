@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
     peer.on('open', (id) => {
         console.log('My peer ID is:', id);
         receiverID = id;
-        const joinUrl = 'https://cdhaoui.github.io/survivalofthebestfit-group-engagement/game/assets/vote.html#' + receiverID;
+        const joinUrl = 'https://zzz-creator.github.io/survivalofthebestfit-group-engagement/game/assets/vote.html#' + receiverID;
         QRlinkAnchor.href = joinUrl;
         QRlinkAnchor.textContent = joinUrl;
         layoutQrPanel();
