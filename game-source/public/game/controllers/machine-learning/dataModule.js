@@ -1,4 +1,4 @@
-import {buildUserModel, buildFakeDataModel, getFeaturePreference, predictPreprocResume} from '~/public/game/controllers/machine-learning/modelTraining.js';
+import {buildUserModel, buildFakeDataModel, buildDebiasedModel, getFeaturePreference, predictPreprocResume, preprocResumes} from '~/public/game/controllers/machine-learning/modelTraining.js';
 import {testClf, testInputData, reportMetrics} from '~/public/game/controllers/machine-learning/modelTesting';
 import {DEBUG_MODE} from '~/public/game/controllers/constants/mlConstants.js';
 import {cvCollection} from '~/public/game/assets/text/cvCollection.js';
@@ -18,6 +18,10 @@ class DataModule {
         this.averageScore = [0, 0, 0, 0];
         this.skillFeatureSize = cvCollection.cvFeatures.length;
         this.toInspectIndex;
+        this.dropCity = false;
+        this.debiasStartIndex = 0;
+        this.beforeAcceptance = null;
+        this.afterAcceptance = null;
     }
 
     recordAccept(personIndex) {
@@ -88,6 +92,7 @@ class DataModule {
     }
 
     train() {
+        this.dropCity = false;
         // if we start from the ml lab stage, we still get real decisions
         if (!this.accepted.length) {
             this.accepted = testAccepted;
@@ -121,11 +126,48 @@ class DataModule {
         }
     }
 
+    // Retrains the model without the neighbourhood column the bias was riding on.
+    // Returns the same sanity check the first model was put through, for
+    // diagnostics only: the shipped model fails it too (goodMetric 0.68 < 0.85),
+    // so the fairness numbers in the ending come from measureAcceptance(), not
+    // from this check.
+    retrainDebiased() {
+        if (!this.accepted.length) {
+            this.accepted = testAccepted;
+            this.lastIndex = testLastIndex;
+        }
+        if (!this.featurePref) this.featurePref = getFeaturePreference(this.accepted);
+
+        // what the model the class has been watching does with the whole pool,
+        // measured before it is replaced
+        this.beforeAcceptance = this.measureAcceptance(cvCollection.cvDataEqual);
+
+        this.debiasStartIndex = this.acceptanceArrayByAlgo.length;
+        this.dropCity = true;
+
+        // the classifier columns and the prediction columns have to agree; if the
+        // preferred-features model fails the checks, fall back to every feature
+        let featurePref = this.featurePref;
+        let clf = buildDebiasedModel(featurePref);
+        let passes = testClf(clf, featurePref, true);
+
+        if (!passes) {
+            featurePref = null;
+            clf = buildDebiasedModel();
+            passes = testClf(clf, featurePref, true);
+        }
+
+        this.featurePref = featurePref;
+        this.clf = clf;
+        this.afterAcceptance = this.measureAcceptance(cvCollection.cvDataEqual);
+        return passes;
+    }
+
     predict(inputResume) {
         // if starting in MLlab stage, we need to quickly train to not break anything
         if (!this.clf) this.train();
         
-        const result = this.clf.predict(predictPreprocResume([inputResume], this.featurePref));
+        const result = this.clf.predict(predictPreprocResume([inputResume], this.featurePref, this.dropCity));
 
         // measure ongoing performance and bias
         this.groundTruth.push(inputResume.empl);
@@ -156,6 +198,42 @@ class DataModule {
 
     getAcceptanceByTheAlgo() {
         return this.acceptanceArrayByAlgo;
+    }
+
+    // decisions made after the model was retrained without the neighbourhood column
+    getAcceptanceSinceDebias() {
+        return this.acceptanceArrayByAlgo.slice(this.debiasStartIndex);
+    }
+
+    // The whole applicant pool, as scored by the model before and by the
+    // retrained model after. Both numbers are measured, never written in the
+    // copy, so the ending cannot claim a fairness the model does not deliver.
+    getPoolComparison() {
+        if (!this.beforeAcceptance || !this.afterAcceptance) return null;
+        return {
+            before: this.beforeAcceptance,
+            after: this.afterAcceptance,
+        };
+    }
+
+    // Acceptance by colour for any pool, using the model as it stands right now.
+    // The belt only shows a handful of candidates, far too few to read a rate
+    // off; this is what the whole applicant pool looks like under that model.
+    measureAcceptance(pool) {
+        if (!this.clf) return null;
+        const [features] = preprocResumes(pool, this.featurePref, this.dropCity);
+        const predictions = this.clf.predict(features);
+        const tally = {
+            orange: {accepted: 0, total: 0},
+            blue: {accepted: 0, total: 0},
+        };
+        predictions.forEach((prediction, index) => {
+            const color = pool[index].color;
+            if (!tally[color]) return;
+            tally[color].total += 1;
+            if (prediction == 1) tally[color].accepted += 1;
+        });
+        return tally;
     }
 
     uploadUserDecisions() {

@@ -20,8 +20,8 @@ const buildUserModel = (acceptedIndices, rejectedIndices) => {
 };
 
 // train model on all available data and tries to incorporate user decisions
-const buildFakeDataModel = (featPref) => {
-    const [featureArr, labelArr] = preprocResumes(cvCollection.cvData, featPref);
+const buildFakeDataModel = (featPref, dropCity) => {
+    const [featureArr, labelArr] = preprocResumes(cvCollection.cvData, featPref, dropCity);
     const [trainX, trainY, validX, validY] =_splitTrainTest(featureArr, labelArr, 0.2);
 
     const options = {
@@ -37,6 +37,14 @@ const buildFakeDataModel = (featPref) => {
     reportMetrics(prediction, validY);
 
     return classifier;
+};
+
+// The historical data never shows colour, but it does show the neighbourhood,
+// and the neighbourhood stands in for colour. Retraining without that column is
+// the only honest "remove the bias" fix available in this simulation: the
+// disparity between groups has nowhere left to enter the model.
+const buildDebiasedModel = (featPref) => {
+    return buildFakeDataModel(featPref, true);
 };
 
 // preprocessing needed only in the buildUserModel simple model
@@ -58,7 +66,7 @@ const _userModelCvPreProc = (accepted, rejected) => {
 
 
 // takes a resume JSON and returns the array of features + city and accompanying labels
-const preprocResumes = (resumes, featPref) => {
+const preprocResumes = (resumes, featPref, dropCity) => {
     const features = [];
     const labels = [];
     //_shuffle(resumes);
@@ -68,11 +76,7 @@ const preprocResumes = (resumes, featPref) => {
             for (const ind in featPref) {
                 cv.push(resumes[i]['qualifications'][ind]);
             }
-            const qualAverage = resumes[i]['qualifications'].reduce((a, b) => {
-                return a + b;
-            }, 0)/resumes[i]['qualifications'].length;
-            // cv.push(qualAverage);
-            cv.push(resumes[i]['city']);
+            if (!dropCity) cv.push(resumes[i]['city']);
             features.push(cv);
             labels.push(resumes[i]['empl']);
         }
@@ -80,7 +84,7 @@ const preprocResumes = (resumes, featPref) => {
         for (let i = 0; i < resumes.length; i++) {
             let cv = [];
             cv = cv.concat(resumes[i]['qualifications']);
-            cv.push(resumes[i]['city']);
+            if (!dropCity) cv.push(resumes[i]['city']);
             features.push(cv);
             labels.push(resumes[i]['empl']);
         }
@@ -121,7 +125,7 @@ const getFeaturePreference = (acceptedIndices) => {
 };
 
 // takes a resume JSON and returns the array of features + city based on the feaure preference of the player
-const predictPreprocResume = (resume, featPref) => {
+const predictPreprocResume = (resume, featPref, dropCity) => {
     const features = [];
 
     if (featPref != undefined) {
@@ -129,16 +133,13 @@ const predictPreprocResume = (resume, featPref) => {
             for (const ind in featPref) {
                 features.push(resume[i]['qualifications'][ind]);
             }
-            const qualAverage = resume[i]['qualifications'].reduce((a, b) => {
-                return a + b;
-            }, 0)/resume[i]['qualifications'].length;
-            // cv.push(qualAverage);
-            features.push(resume[i]['city']);
+            if (!dropCity) features.push(resume[i]['city']);
         }
     } else {
         for (let i = 0; i < resume.length; i++) {
-            features.push(resume[i]['qualifications']);
-            features.push(resume[i]['city']);
+            // must stay flat to match preprocResumes, or the tree reads the wrong columns
+            resume[i]['qualifications'].forEach((qual) => features.push(qual));
+            if (!dropCity) features.push(resume[i]['city']);
         }
     }
     return [features];
@@ -163,4 +164,4 @@ const _shuffle = (b) => {
     return a;
 };
 
-export {buildUserModel, buildFakeDataModel, getFeaturePreference, predictPreprocResume, preprocResumes};
+export {buildUserModel, buildFakeDataModel, buildDebiasedModel, getFeaturePreference, predictPreprocResume, preprocResumes};

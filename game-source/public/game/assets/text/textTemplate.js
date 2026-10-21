@@ -310,14 +310,27 @@ const english = {
                 ],
             },
             {
-                messageFromVc: 'Shut down the company!!! The news got out and you just got sued for hiring discrimination. All the investors are pulling out! What on earth went wrong?',
+                messageFromVc: 'The algorithm never saw anyone\'s colour, but it did see the city column, and that column is doing colour\'s job for it. Can we retrain it without it, and watch what it does?',
                 responses: [
-                    'Let\'s wrap up what happened.',
+                    'Retrain without the city column.',
+                    'Then keep watching every decision it makes.',
                 ],
+                retrain: true,
                 news: [
-                    'Blueville Daily: Hiring algorithm scandal blows out of proportions',
-                    'The Justice: Tech companies need to be held accountable',
- 
+                    'Techountability: A postcode is not a personality',
+                    'The Justice: The quiet columns that carry bias',
+                ],
+            },
+            {
+                messageFromVc: 'It worked. {poolSummary} {retrainOutcome} We\'re rolling the algorithm out worldwide, and we\'re publishing these numbers every quarter.',
+                responses: [
+                    'Let\'s keep the numbers public.',
+                ],
+                hiresGap: 6,
+                news: [
+                    'Blueville Gazette: Bestfit publishes its acceptance rates - and the gap is gone',
+                    'Tech Junkies: Debiased hiring algorithm adopted worldwide',
+                    'Orange Valley Review: "Fairness is a metric you publish, not a promise you make"',
                 ],
             },
         ],

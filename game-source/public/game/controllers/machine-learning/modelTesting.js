@@ -7,9 +7,9 @@ const goodCvTestData = require('~/public/game/assets/text/goodCvTestData.json').
 const equalCvTestData = require('~/public/game/assets/text/equalCvData.json').candidates;
 
 
-const testClf = (clf, featPref) => {
+const testClf = (clf, featPref, dropCity) => {
     // Test if good candidates are accepted. Count and most should be employed
-    let [featArr, labelArr] = preprocResumes(goodCvTestData, featPref);
+    let [featArr, labelArr] = preprocResumes(goodCvTestData, featPref, dropCity);
     let pred = clf.predict(featArr);
     let metrics = compareBinaryArrays(pred, labelArr, SILENT);
     const employedGood = metrics['oneOne'] + metrics['oneZero'];
@@ -17,7 +17,7 @@ const testClf = (clf, featPref) => {
     const goodMetric = round(employedGood/(employedGood+unemployedGood));
 
     // Test if bad candidates are rejected. Count and most should not be employed
-    [featArr, labelArr] = preprocResumes(badCvTestData, featPref);
+    [featArr, labelArr] = preprocResumes(badCvTestData, featPref, dropCity);
     pred = clf.predict(featArr);
     metrics = compareBinaryArrays(pred, labelArr, SILENT);
     const employedBad = metrics['oneOne'] + metrics['oneZero'];
@@ -25,9 +25,9 @@ const testClf = (clf, featPref) => {
     const badMetric = round(unemployedBad/(employedBad+unemployedBad));
 
     // Test if city bias exists. Count number of accepted people from each city.
-    [featArr, labelArr] = preprocResumes(equalCvTestData, featPref);
+    [featArr, labelArr] = preprocResumes(equalCvTestData, featPref, dropCity);
     pred = clf.predict(featArr);
-    const cities = featArr.map((x) => x[x.length - 1]);
+    const cities = equalCvTestData.map((x) => x.city);
     metrics = compareBinaryArrays(pred, cities, SILENT);
     const blueCityEmpl = metrics['oneZero'];
     const orangeCityEmpl = metrics['oneOne'];
